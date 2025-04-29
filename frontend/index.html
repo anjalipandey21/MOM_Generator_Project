@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MOM Generator (Executive Format)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f4f6f8;
+    }
+    textarea, #output {
+      width: 100%;
+      font-size: 16px;
+      margin-bottom: 20px;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    textarea {
+      height: 200px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    #output {
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      white-space: normal;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h3 {
+      margin-top: 24px;
+      margin-bottom: 10px;
+      color: #222;
+    }
+    ul {
+      margin-left: 20px;
+      margin-bottom: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>MOM Generator</h1>
+
+  <textarea id="ragInput" placeholder="Paste RAG output here..."></textarea>
+  <br>
+  <button onclick="generateMOM()">Generate MOM</button>
+
+  <div id="loading" style="display:none; font-weight: bold;">⏳ Generating MOM, please wait...</div>
+
+  <h2>Generated Minutes of Meeting (MOM):</h2>
+  <div id="output"></div>
+
+  <button id="downloadBtn" style="display:none;" onclick="downloadMOM()">Download MOM</button>
+
+  <script>
+    async function generateMOM() {
+      const inputText = document.getElementById('ragInput').value;
+      const outputDiv = document.getElementById('output');
+      const loadingDiv = document.getElementById('loading');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      if (!inputText.trim()) {
+        outputDiv.innerText = "Please paste RAG output before submitting.";
+        return;
+      }
+
+      outputDiv.innerText = "";
+      downloadBtn.style.display = 'none';
+      loadingDiv.style.display = 'block';
+
+      try {
+        const response = await fetch('http://localhost:8000/generate-mom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: inputText }),
+        });
+
+        const data = await response.json();
+        loadingDiv.style.display = 'none';
+
+        if (data.mom) {
+          outputDiv.innerHTML = cleanAndFormatMOM(data.mom);
+          downloadBtn.style.display = 'inline-block';
+        } else if (data.error) {
+          outputDiv.innerText = `❌ Error: ${data.error}`;
+        } else {
+          outputDiv.innerText = "❌ Failed to generate MOM. Please try again.";
+        }
+
+      } catch (error) {
+        console.error(error);
+        loadingDiv.style.display = 'none';
+        outputDiv.innerText = "❌ Connection error. Check if backend is running.";
+      }
+    }
+
+    function cleanAndFormatMOM(momText) {
+      const lines = momText
+        .replace(/\*/g, '')
+        .replace(/^##\s*/, '')
+        .replace(/\r\n/g, '\n')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      let html = '';
+      let inList = false;
+
+      const labelMap = {
+        'Minutes of Meeting': '📝 Minutes of Meeting:',
+        'Date': '📅 Date:',
+        'Meeting Participants': '👥 Participants:',
+        'Agenda Topics': '📌 Agenda Topics:',
+        'Detailed Discussion Points': '🗣️ Discussion Highlights:',
+        'Key Decisions Made': '✅ Key Decisions:',
+        'Action Items and Responsible Owners': '📝 Action Items:',
+        'Next Meeting Date': '📆 Next Meeting:'
+      };
+
+      lines.forEach((line, i) => {
+        for (const [raw, emojiLabel] of Object.entries(labelMap)) {
+          if (line.toLowerCase().startsWith(raw.toLowerCase())) {
+            if (inList) {
+              html += '</ul>';
+              inList = false;
+            }
+            html += `<h3>${emojiLabel}</h3>`;
+            return;
+          }
+        }
+
+        if (/^[A-Za-z ]+:\s/.test(line)) {
+          const [label, ...rest] = line.split(':');
+          html += `<p><strong>${label.trim()}:</strong> ${rest.join(':').trim()}</p>`;
+          return;
+        }
+
+        if (/^[-•]/.test(line)) {
+          if (!inList) {
+            html += '<ul>';
+            inList = true;
+          }
+          html += `<li>${line.replace(/^[-•]\s*/, '')}</li>`;
+          return;
+        }
+
+        if (line.match(/^[A-Z]/) && line.length < 140 && !line.endsWith('.')) {
+          if (!inList) html += '<ul>';
+          inList = true;
+          html += `<li>${line}</li>`;
+          return;
+        }
+
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<p>${line}</p>`;
+      });
+
+      if (inList) html += '</ul>';
+      return html;
+    }
+
+    function downloadMOM() {
+      const text = document.getElementById('output').innerText;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Minutes_of_Meeting.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+
+</body>
+</html>

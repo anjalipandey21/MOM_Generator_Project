@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MOM Generator (Gemini 1.5 Flash)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f6f8;
+        }
+        textarea, #output {
+            width: 100%;
+            font-size: 16px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        textarea {
+            height: 200px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #output {
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            white-space: pre-wrap;
+        }
+        #loading {
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MOM Generator (Automated - Gemini LLM)</h1>
+
+    <textarea id="ragInput" placeholder="Paste RAG output here..."></textarea>
+    <br>
+    <button onclick="generateMOM()">Generate MOM</button>
+
+    <div id="loading" style="display:none;">⏳ Generating MOM, please wait...</div>
+
+    <h2>Generated Minutes of Meeting (MOM):</h2>
+    <div id="output"></div>
+
+    <button id="downloadBtn" style="display:none;" onclick="downloadMOM()">Download MOM</button>
+
+    <script>
+        async function generateMOM() {
+            const inputText = document.getElementById('ragInput').value;
+            const outputDiv = document.getElementById('output');
+            const loadingDiv = document.getElementById('loading');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            if (!inputText.trim()) {
+                outputDiv.innerText = "Please paste RAG output before submitting.";
+                return;
+            }
+
+            outputDiv.innerText = "";
+            downloadBtn.style.display = 'none';
+            loadingDiv.style.display = 'block';
+
+            try {
+                const response = await fetch('http://localhost:8000/generate-mom', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: inputText }),
+                });
+
+                const data = await response.json();
+                loadingDiv.style.display = 'none';
+
+                if (data.mom) {
+                    outputDiv.innerHTML = data.mom.replace(/\n/g, "<br>");
+                    downloadBtn.style.display = 'inline-block';
+                } else if (data.error) {
+                    outputDiv.innerText = `Error: ${data.error}`;
+                } else {
+                    outputDiv.innerText = "Failed to generate MOM. Please try again.";
+                }
+
+            } catch (error) {
+                console.error(error);
+                loadingDiv.style.display = 'none';
+                outputDiv.innerText = "Error connecting to server.";
+            }
+        }
+
+        function downloadMOM() {
+            const text = document.getElementById('output').innerText;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Minutes_of_Meeting.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+
+</body>
+</html>
