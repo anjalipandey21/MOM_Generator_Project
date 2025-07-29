@@ -106,10 +106,10 @@ Navigate to `/frontend` folder and open `index.html` manually in your browser.
 
 ## 📈 Future Enhancements
 
-- Upload meeting videos for automatic speech-to-text ➔ MOM
-- Real-time meeting summarization
-- DOCX export format
-- Slack/Teams integration for action item notifications
-- Hosting frontend and backend publicly
+- Upload meeting videos for automatic speech-to-text. ➔ MOM
+- Real-time meeting summarization.
+- DOCX export format.
+- Slack/Teams integration for action item notifications.
+- Hosting frontend and backend publicly.
 
 ---
